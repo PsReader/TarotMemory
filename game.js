@@ -24,7 +24,6 @@
     { n:19, roman:"XIX", name:"The Sun", k:"vitality · success · clarity", s:'<circle class="a" cx="24" cy="22" r="8"/><circle class="f" cx="24" cy="22" r="3"/><path class="g" d="M24 4v7M24 33v7M6 22h7M35 22h7M11 9l5 5M33 35l-5-5M37 9l-5 5M15 35l5-5"/>' },
     { n:20, roman:"XX", name:"Judgement", k:"awakening · reckoning · rise", s:'<g transform="translate(24 24) rotate(25) scale(.95 .7) translate(-24 -24)"><path class="g" d="M6 24h6M12 22h17v4H12z"/><path class="a" d="M29 22c4 0 7-2 10-5l3-1v16l-3-1c-3-3-6-5-10-5z"/><path class="g" d="M18 22v-5M23 22v-5M28 22v-5M18 17h3M23 17h3M28 17h3"/></g>' },
     { n:21, roman:"XXI", name:"The World", k:"wholeness · completion · attainment", s:'<circle class="g" cx="24" cy="20" r="14"/><path class="g" d="M24 6c-4.8 4-7 8.7-7 14s2.2 10 7 14M24 6c4.8 4 7 8.7 7 14s-2.2 10-7 14"/><path class="g" d="M10 20h28M12 14.5c7 2.8 17 2.8 24 0M12 25.5c7-2.8 17-2.8 24 0"/><path class="g" d="M20 34v3M28 34v3M17 39h14"/>' }
-  
   ];
 
   var DIFFS = {
@@ -66,6 +65,21 @@
   var seconds = 0;
   var totalTime = 0;
   var timerId = null;
+  var timeoutIds = [];
+  function post(fn, ms) {
+    var id = setTimeout(function () {
+      var i = timeoutIds.indexOf(id);
+      if (i >= 0) timeoutIds.splice(i, 1);
+      fn();
+    }, ms);
+    timeoutIds.push(id);
+    return id;
+  }
+  function clearAllTimers() {
+    clearInterval(timerId);
+    timeoutIds.forEach(function (id) { clearTimeout(id); });
+    timeoutIds = [];
+  }
   var locked = false;
   var dealing = true;
   var level = 1;
@@ -172,7 +186,7 @@
   }
 
   function beginLevel() {
-    clearInterval(timerId);
+    clearAllTimers();
     var c = cfg();
     totalTime = c.time;
     seconds = c.time;
@@ -221,7 +235,7 @@
     locked = true;
     var a = picked[0];
     var b = picked[1];
-    setTimeout(function () {
+    post(function () {
       if (cards[a].id === cards[b].id) {
         cards[a].matched = cards[b].matched = true;
         matched++;
@@ -233,14 +247,14 @@
         render();
         if (matched === cfg().pairs) {
           clearInterval(timerId);
-          setTimeout(function () { end(true); }, 650);
+          post(function () { end(true); }, 650);
         }
       } else {
         cards[a].mismatch = cards[b].mismatch = true;
         score = Math.max(0, score - 10);
         $("#score").textContent = score + " ✦";
         render();
-        setTimeout(function () {
+        post(function () {
           cards[a].flipped = false;
           cards[b].flipped = false;
           cards[a].mismatch = false;
@@ -270,12 +284,12 @@
         state.runs[state.diff]++;
         save();
         showModal(c.label + " complete",
-          "All " + c.levels + " levels sealed. The arcana honor you — +" + earned + " ★ on the final board. Runs finished in this mode: " + state.runs[state.diff] + ".",
+          "All " + c.levels + " levels sealed. The arcana honor you: +" + earned + " ★ on the final board. Runs finished in this mode: " + state.runs[state.diff] + ".",
           "Continue");
       }
     } else {
       showModal("Rite unfinished",
-        "The water clock ran dry at level " + level + ". The run resets to level 1 — the arcana will wait.", "Try again", start);
+        "The water clock ran dry at level " + level + ". The run resets to level 1. The arcana will wait.", "Try again", start);
     }
   }
 
@@ -301,7 +315,7 @@
     if (pair) {
       cards.forEach(function (c) { if (c.id === pair.id && !c.matched) c.hint = true; });
       render();
-      setTimeout(function () {
+      post(function () {
         cards.forEach(function (c) { c.hint = false; });
         render();
       }, 1800);
@@ -313,7 +327,7 @@
     tools.freeze = 0;
     $("#freezeCount").textContent = "0";
     clearInterval(timerId);
-    setTimeout(function () {
+    post(function () {
       if (seconds <= 0) return;
       timerId = setInterval(function () {
         seconds--;
@@ -355,8 +369,8 @@
 
   $("#startBtn").addEventListener("click", start);
   $("#restartBtn").addEventListener("click", start);
-  $("#backBtn").addEventListener("click", function () { clearInterval(timerId); show("#homeScreen"); });
-  $("#homeBtn").addEventListener("click", function () { clearInterval(timerId); show("#homeScreen"); });
+  $("#backBtn").addEventListener("click", function () { clearAllTimers(); show("#homeScreen"); });
+  $("#homeBtn").addEventListener("click", function () { clearAllTimers(); show("#homeScreen"); });
   $("#helpBtn").addEventListener("click", help);
   $("#helpCardBtn").addEventListener("click", help);
   $("#closeModal").addEventListener("click", closeModal);
